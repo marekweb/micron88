@@ -115,6 +115,41 @@ void vm_exec(vm *vm) {
     vm_stack_push(vm, value1 - value2);
     break;
   }
+
+  case OP_MUL: {
+    i32 value1 = vm_stack_pop(vm);
+    i32 value2 = vm_stack_pop(vm);
+    vm_stack_push(vm, value1 * value2);
+    break;
+  }
+
+  case OP_DIV: {
+    i32 value1 = vm_stack_pop(vm);
+    i32 value2 = vm_stack_pop(vm);
+    vm_stack_push(vm, value1 / value2);
+    break;
+  }
+
+  case OP_MOD: {
+    i32 value1 = vm_stack_pop(vm);
+    i32 value2 = vm_stack_pop(vm);
+    vm_stack_push(vm, value1 % value2);
+    break;
+  }
+
+  case OP_EQ: {
+    i32 value1 = vm_stack_pop(vm);
+    i32 value2 = vm_stack_pop(vm);
+    vm_stack_push(vm, value1 == value2);
+    break;
+  }
+
+  case OP_NEQ: {
+    i32 value1 = vm_stack_pop(vm);
+    i32 value2 = vm_stack_pop(vm);
+    vm_stack_push(vm, value1 != value2);
+    break;
+  }
   }
 }
 

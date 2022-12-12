@@ -12,6 +12,9 @@
 #define OP_SUB 71
 #define OP_MUL 72
 #define OP_DIV 73
+#define OP_MOD 74
+#define OP_EQ 75
+#define OP_NEQ 76
 #define OP_LOAD_8 80
 #define OP_LOAD_16
 #define OP_LOAD_32 100
