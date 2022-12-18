@@ -16,31 +16,59 @@ void vm_err(vm *vm, u8 err) {
 u8 vm_read_mem_8(vm *vm, u32 addr) {
   if (addr > VM_MEMORY_SIZE) {
     vm_err(vm, VM_ERR_OOB);
-    return 0;
   }
   return vm->memory[addr];
 }
 
 u16 vm_read_mem_16(vm *vm, u32 addr) {
-  if (addr + 1 > VM_MEMORY_SIZE) {
+  if (addr + 2 > VM_MEMORY_SIZE) {
     vm_err(vm, VM_ERR_OOB);
-    return 0;
   }
-  u16 *mem = (u16 *)vm->memory;
-  return mem[addr];
+  return *(u16 *)(vm->memory + addr);
 }
 
 u32 vm_read_mem_32(vm *vm, u32 addr) {
+  if (addr + 4 > VM_MEMORY_SIZE) {
+    vm_err(vm, VM_ERR_OOB);
+  }
+  return *(u32 *)(vm->memory + addr);
+}
+
+void vm_write_mem_8(vm *vm, u32 addr, u8 value) {
+  if (addr > VM_MEMORY_SIZE) {
+    vm_err(vm, VM_ERR_OOB);
+    return;
+  }
+  vm->memory[addr] = value;
+}
+
+void vm_write_mem_16(vm *vm, u32 addr, u16 value) {
+  if (addr + 1 > VM_MEMORY_SIZE) {
+    vm_err(vm, VM_ERR_OOB);
+    return;
+  }
+  *(u16 *)(vm->memory + addr) = value;
+}
+
+void vm_write_mem_32(vm *vm, u32 addr, u32 value) {
   if (addr + 3 > VM_MEMORY_SIZE) {
     vm_err(vm, VM_ERR_OOB);
-    return 0;
+    return;
   }
-  return vm->memory[addr];
+  *(u32 *)(vm->memory + addr) = value;
 }
 
 u8 vm_read_pc_8(vm *vm) { return vm_read_mem_8(vm, vm->pc++); }
-u16 vm_read_pc_16(vm *vm) { return vm_read_mem_16(vm, vm->pc += 2); }
-u32 vm_read_pc_32(vm *vm) { return vm_read_mem_32(vm, vm->pc += 4); }
+u16 vm_read_pc_16(vm *vm) {
+  u16 value = vm_read_mem_16(vm, vm->pc);
+  vm->pc += 2;
+  return value;
+}
+u32 vm_read_pc_32(vm *vm) {
+  u32 value = vm_read_mem_32(vm, vm->pc);
+  vm->pc += 4;
+  return value;
+}
 
 u32 vm_stack_peek(vm *vm) {
   if (vm->sp == 0) {
@@ -86,6 +114,7 @@ void vm_exec(vm *vm) {
 
   case OP_CONST_16:
     arg = vm_read_pc_16(vm);
+    printf("OP_CONST_16 read: %d\n", arg);
     vm_stack_push(vm, arg);
     break;
 
@@ -148,6 +177,48 @@ void vm_exec(vm *vm) {
     i32 value1 = vm_stack_pop(vm);
     i32 value2 = vm_stack_pop(vm);
     vm_stack_push(vm, value1 != value2);
+    break;
+  }
+
+  case OP_LOAD_8: {
+    u32 addr = vm_stack_pop(vm);
+    u8 value = vm_read_mem_8(vm, addr);
+    vm_stack_push(vm, value);
+    break;
+  }
+
+  case OP_LOAD_16: {
+    u32 addr = vm_stack_pop(vm);
+    u16 value = vm_read_mem_16(vm, addr);
+    vm_stack_push(vm, value);
+    break;
+  }
+
+  case OP_LOAD_32: {
+    u32 addr = vm_stack_pop(vm);
+    u32 value = vm_read_mem_32(vm, addr);
+    vm_stack_push(vm, value);
+    break;
+  }
+
+  case OP_STORE_8: {
+    u32 addr = vm_stack_pop(vm);
+    u8 value = vm_stack_pop(vm) & 0xFF;
+    vm_write_mem_8(vm, addr, value);
+    break;
+  }
+
+  case OP_STORE_16: {
+    u32 addr = vm_stack_pop(vm);
+    u16 value = vm_stack_pop(vm) & 0xFFFF;
+    vm_write_mem_16(vm, addr, value);
+    break;
+  }
+
+  case OP_STORE_32: {
+    u32 addr = vm_stack_pop(vm);
+    u32 value = vm_stack_pop(vm);
+    vm_write_mem_32(vm, addr, value);
     break;
   }
   }
