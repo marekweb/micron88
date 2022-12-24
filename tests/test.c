@@ -133,4 +133,5 @@ int main() {
     vm_free(vm);
     test_end();
   }
+    vm_run(vm);
 }
