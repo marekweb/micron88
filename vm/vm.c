@@ -114,7 +114,6 @@ void vm_exec(vm *vm) {
 
   case OP_CONST_16:
     arg = vm_read_pc_16(vm);
-    printf("OP_CONST_16 read: %d\n", arg);
     vm_stack_push(vm, arg);
     break;
 

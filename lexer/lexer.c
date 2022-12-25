@@ -1,13 +1,23 @@
 #include "lexer.h"
 #include <ctype.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 
-#define transition(old_state, condition, new_state)                            \
-  if (lexer->state == old_state && condition) {                                \
-    lexer->state = new_state;                                                  \
-    continue;                                                                  \
+uint64_t atoin(const uint8_t *buf, uint8_t length) {
+  uint64_t result = 0;
+  uint8_t i;
+
+  if (length == 0) {
+    return 0;
   }
+
+  for (i = 0; i < length; i++) {
+    result = result * 10 + (buf[i] - '0');
+  }
+
+  return result;
+}
 
 lexer_t *lexer_new(const uint8_t *buf, size_t size) {
   lexer_t *lexer = calloc(1, sizeof(lexer_t));
@@ -62,7 +72,7 @@ token_t lexer_next(lexer_t *lexer) {
       }
     }
     token_t token = {
-        .type = TOKEN_TYPE_STRING,
+        .type = TOKEN_TYPE_IDENTIFIER,
         .line = lexer->line,
         .column = lexer->column,
         .value.string.length = lexer->current_offset - token_start,
@@ -79,19 +89,19 @@ token_t lexer_next(lexer_t *lexer) {
         break;
       }
     }
-    token_t token = {
-        .type = TOKEN_TYPE_INTEGER,
-        .line = lexer->line,
-        .column = lexer->column,
-        .value.integer = atoi((char *)lexer->buf + token_start),
-    };
+    token_t token = {.type = TOKEN_TYPE_INTEGER_LITERAL,
+                     .line = lexer->line,
+                     .column = lexer->column,
+                     .value.integer =
+                         atoin(lexer->buf + token_start,
+                               lexer->current_offset - token_start)};
     return token;
   }
-  if (isblank(c)) {
+  if (isspace(c)) {
     int token_start = lexer->current_offset - 1;
     while (1) {
       c = next(lexer);
-      if (!isblank(c)) {
+      if (!isspace(c)) {
         back(lexer);
         break;
       }
@@ -105,4 +115,48 @@ token_t lexer_next(lexer_t *lexer) {
     };
     return token;
   }
+  if (c == '"') {
+    // TODO: handle escape sequences in strings
+    int token_start = lexer->current_offset - 1;
+    while (1) {
+      c = next(lexer);
+      if (c == '"') {
+        break;
+      }
+    }
+    token_t token = {
+        .type = TOKEN_TYPE_STRING_LITERAL,
+        .line = lexer->line,
+        .column = lexer->column,
+        .value.string.length = lexer->current_offset - token_start,
+        .value.string.buffer = (uint8_t *)lexer->buf + token_start,
+    };
+    return token;
+  }
+
+  switch (c) {
+  case '+':
+  case '-':
+  case '*':
+  case '/':
+  case '.':
+  case '=':
+  case ';':
+  case '(':
+  case ')':
+    return (token_t){
+        .type = TOKEN_TYPE_SPECIAL,
+        .line = lexer->line,
+        .column = lexer->column,
+        .value.integer = c,
+    };
+  }
+
+  // TODO: handle other tokens
+  printf("Unknown character: [%c] (%d)\n", c, c);
+  return (token_t){
+      .type = TOKEN_TYPE_EOF,
+      .line = lexer->line,
+      .column = lexer->column,
+  };
 }
