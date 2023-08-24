@@ -1,5 +1,6 @@
 #pragma once
 #include "token.h"
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -17,6 +18,7 @@ struct lexer_t {
   size_t size;
   size_t current_offset;
   lexer_state_t state;
+  bool skip_whitespace;
 };
 
 typedef struct lexer_t lexer_t;
@@ -24,3 +26,5 @@ typedef struct lexer_t lexer_t;
 lexer_t *lexer_new(const uint8_t *buf, size_t size);
 void lexer_free(lexer_t *lexer);
 token_t lexer_next(lexer_t *lexer);
+token_t lexer_peek(lexer_t *lexer);
+char *lexer_extract_string(lexer_t *lexer, int start, int length);

@@ -4,14 +4,8 @@
 #include <stdio.h>
 #include <string.h>
 
-int spseq(const short_pascal_string_t a, char *b) {
-  for (int i = 0; i < a.length; i++) {
-    if (a.buffer[i] != b[i] || b[i] == 0) {
-      return 0;
-    }
-  }
-  return 1;
-}
+#define streq(a, b) (strcmp(a, b) == 0)
+#define spseq(a, b) streq(a, b)
 
 #define assert_token_identifier(token, s)                                      \
   assert(token.type == TOKEN_TYPE_IDENTIFIER);                                 \
@@ -30,21 +24,18 @@ int spseq(const short_pascal_string_t a, char *b) {
 
 #define print_token(token)                                                     \
   if (token.type == TOKEN_TYPE_IDENTIFIER) {                                   \
-    printf("token: type=%d, value=%.*s at %d:%d\n", token.type,                \
-           token.value.string.length, token.value.string.buffer, token.line,   \
-           token.column);                                                      \
+    printf("token: type=%d, value=%s at %d:%d\n", token.type,                  \
+           token.value.string, token.line, token.column);                      \
   } else if (token.type == TOKEN_TYPE_STRING_LITERAL) {                        \
-    printf("token: type=%d, value=%.*s at %d:%d\n", token.type,                \
-           token.value.string.length, token.value.string.buffer, token.line,   \
-           token.column);                                                      \
+    printf("token: type=%d, value=%s at %d:%d\n", token.type,                  \
+           token.value.string, token.line, token.column);                      \
   } else if (token.type == TOKEN_TYPE_INTEGER_LITERAL) {                       \
     printf("token: type=%d, value=%d\n", token.type, token.value.integer);     \
   } else if (token.type == TOKEN_TYPE_WHITESPACE) {                            \
     printf("token: type=%d (whitespace)\n", token.type);                       \
   }
 
-void tokenize(const uint8_t *buf, size_t size, token_t *tokens) {
-  lexer_t *lexer = lexer_new(buf, size);
+void tokenize(lexer_t *lexer, token_t *tokens) {
   token_t token;
   int token_index = 0;
   do {
@@ -52,7 +43,6 @@ void tokenize(const uint8_t *buf, size_t size, token_t *tokens) {
     tokens[token_index++] = token;
     print_token(token);
   } while (token.type != TOKEN_TYPE_EOF);
-  lexer_free(lexer);
 }
 
 int main() {
@@ -62,7 +52,7 @@ int main() {
     token_t tokens[100];
     size_t len = sizeof(input);
     lexer_t *lexer = lexer_new(input, len);
-    tokenize(input, len, tokens);
+    tokenize(lexer, tokens);
 
     assert_token_identifier(tokens[0], "hello");
     assert_token_whitespace(tokens[1]);
@@ -86,7 +76,7 @@ int main() {
     token_t tokens[100];
     size_t len = sizeof(input);
     lexer_t *lexer = lexer_new(input, len);
-    tokenize(input, len, tokens);
+    tokenize(lexer, tokens);
 
     assert_token_identifier(tokens[0], "value");
     assert_token_whitespace(tokens[1]);
@@ -124,7 +114,7 @@ int main() {
     token_t tokens[100];
     size_t len = sizeof(input);
     lexer_t *lexer = lexer_new(input, len);
-    tokenize(input, len, tokens);
+    tokenize(lexer, tokens);
 
     assert_token_identifier(tokens[0], "message");
     assert_token_whitespace(tokens[1]);
@@ -134,6 +124,24 @@ int main() {
     assert_token_special(tokens[5], ';');
     assert_token_whitespace(tokens[6]);
     assert(tokens[7].type == TOKEN_TYPE_EOF);
+
+    lexer_free(lexer);
+  }
+
+  {
+    uint8_t input[] = "1 + 2 * 3";
+    token_t tokens[100];
+    size_t len = sizeof(input);
+    lexer_t *lexer = lexer_new(input, len);
+    lexer->skip_whitespace = true;
+    tokenize(lexer, tokens);
+
+    assert_token_integer(tokens[0], 1);
+    assert_token_special(tokens[1], '+');
+    assert_token_integer(tokens[2], 2);
+    assert_token_special(tokens[3], '*');
+    assert_token_integer(tokens[4], 3);
+    assert(tokens[5].type == TOKEN_TYPE_EOF);
 
     lexer_free(lexer);
   }

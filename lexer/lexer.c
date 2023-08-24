@@ -3,7 +3,12 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
+/*
+ * Convert a string of digits to an integer. Used for parsing integers. Takes a
+ * buffer length.
+ */
 uint64_t atoin(const uint8_t *buf, uint8_t length) {
   uint64_t result = 0;
   uint8_t i;
@@ -28,6 +33,9 @@ lexer_t *lexer_new(const uint8_t *buf, size_t size) {
 
 void lexer_free(lexer_t *lexer) { free(lexer); }
 
+/*
+ * Get next character without advancing current offset.
+ */
 uint8_t peek(lexer_t *lexer) {
   if (lexer->current_offset >= lexer->size) {
     lexer->state = LEXER_STATE_EOF;
@@ -35,6 +43,10 @@ uint8_t peek(lexer_t *lexer) {
   }
   return lexer->buf[lexer->current_offset];
 }
+
+/*
+ * Get next character and advance current offset.
+ */
 uint8_t next(lexer_t *lexer) {
   uint8_t c = peek(lexer);
   lexer->current_offset++;
@@ -75,9 +87,8 @@ token_t lexer_next(lexer_t *lexer) {
         .type = TOKEN_TYPE_IDENTIFIER,
         .line = lexer->line,
         .column = lexer->column,
-        .value.string.length = lexer->current_offset - token_start,
-        .value.string.buffer = (uint8_t *)lexer->buf + token_start,
-    };
+        .value.string = lexer_extract_string(
+            lexer, token_start, lexer->current_offset - token_start)};
     return token;
   }
   if (isdigit(c)) {
@@ -106,13 +117,17 @@ token_t lexer_next(lexer_t *lexer) {
         break;
       }
     }
+
+    if (lexer->skip_whitespace) {
+      return lexer_next(lexer);
+    }
+
     token_t token = {
         .type = TOKEN_TYPE_WHITESPACE,
         .line = lexer->line,
         .column = lexer->column,
-        .value.string.length = lexer->current_offset - token_start,
-        .value.string.buffer = (uint8_t *)lexer->buf + token_start,
-    };
+        .value.string = lexer_extract_string(
+            lexer, token_start, lexer->current_offset - token_start)};
     return token;
   }
   if (c == '"') {
@@ -128,9 +143,8 @@ token_t lexer_next(lexer_t *lexer) {
         .type = TOKEN_TYPE_STRING_LITERAL,
         .line = lexer->line,
         .column = lexer->column,
-        .value.string.length = lexer->current_offset - token_start,
-        .value.string.buffer = (uint8_t *)lexer->buf + token_start,
-    };
+        .value.string = lexer_extract_string(
+            lexer, token_start, lexer->current_offset - token_start)};
     return token;
   }
 
@@ -153,10 +167,32 @@ token_t lexer_next(lexer_t *lexer) {
   }
 
   // TODO: handle other tokens
-  printf("Unknown character: [%c] (%d)\n", c, c);
+  // For now, just return EOF for unknown characters, but we print the unknown
+  // character to signal that we still need to implement handling for it. c == 0
+  // is the null terminator, so it's EOF.
+  if (c != 0) {
+    printf("Unknown character: [%c] (%d)\n", c, c);
+  }
   return (token_t){
       .type = TOKEN_TYPE_EOF,
       .line = lexer->line,
       .column = lexer->column,
   };
 }
+
+/* Allocate a new string from the source code buffer */
+char *lexer_extract_string(lexer_t *lexer, int start, int length) {
+  char *token_string = malloc(length + 1);
+  memcpy(token_string, lexer->buf + start, length);
+  token_string[length] = '\0';
+  return token_string;
+}
+
+struct token_list_item_t {
+  token_t *token;
+  struct token_list_item_t *next, *prev;
+};
+
+struct token_list_t {
+  struct token_list_item_t *head, *tail;
+};
